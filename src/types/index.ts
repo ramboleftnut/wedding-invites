@@ -14,6 +14,7 @@ export interface TemplateField {
 export interface Template {
   id: string
   name: string
+  componentKey: string
   price: number
   previewImage: string
   description: string
@@ -31,21 +32,31 @@ export interface Order {
   createdAt: Date
 }
 
+export interface FontSelection {
+  serif: string
+  sans: string
+  script: string
+}
+
 export interface EventData {
   brideName: string
   groomName: string
+  eventName?: string
   location: string
   message?: string
   coverImage?: string
   galleryImages?: string[]
+  fonts?: FontSelection
 }
 
 export interface WeddingEvent {
   id: string
   userId: string
   templateId: string
+  componentKey: string
   slug: string
   eventDate: string
+  ownerEmail: string
   data: EventData
   createdAt: Date
 }
@@ -57,5 +68,15 @@ export interface RSVP {
   email: string
   attending: 'yes' | 'no'
   message?: string
+  createdAt: Date
+}
+
+export interface Invitation {
+  id: string
+  eventId: string
+  guestName: string
+  guestEmail?: string
+  token: string
+  status: 'pending' | 'accepted'
   createdAt: Date
 }

@@ -1,20 +1,24 @@
 'use client'
 
-import type { WeddingEvent, RSVP } from '@/types'
-import { createRSVP } from '@/lib/firestore'
+import type { WeddingEvent, RSVP, Invitation } from '@/types'
+import { createRSVP, updateInvitationStatus } from '@/lib/firestore'
 import { sendRSVPNotification } from '@/lib/emailjs'
 import { getTemplateComponent } from '@/templates/registry'
 
 interface Props {
+  invitation: Invitation
   event: WeddingEvent
   isExpired: boolean
 }
 
-export default function EventPageClient({ event, isExpired }: Props) {
+export default function InvitePageClient({ invitation, event, isExpired }: Props) {
   const Template = getTemplateComponent(event.componentKey)
 
   async function handleRSVPSubmit(data: Omit<RSVP, 'id' | 'eventId' | 'createdAt'>) {
-    await createRSVP({ ...data, eventId: event.id })
+    await Promise.all([
+      createRSVP({ ...data, eventId: event.id }),
+      updateInvitationStatus(invitation.id, 'accepted'),
+    ])
     try {
       await sendRSVPNotification({
         toEmail: event.ownerEmail,
@@ -25,5 +29,12 @@ export default function EventPageClient({ event, isExpired }: Props) {
     } catch { /* best-effort */ }
   }
 
-  return <Template event={event} onRSVPSubmit={handleRSVPSubmit} isExpired={isExpired} />
+  return (
+    <Template
+      event={event}
+      onRSVPSubmit={handleRSVPSubmit}
+      isExpired={isExpired}
+      guestName={invitation.guestName}
+    />
+  )
 }

@@ -10,7 +10,9 @@
       "PowerShell(Get-Item *)",
       "Bash(Get-ChildItem -Force)",
       "Bash(Select-Object Name, PSIsContainer)",
-      "PowerShell(cd \"C:\\\\Users\\\\Administrator\\\\Desktop\\\\wedding-invites\"; Get-ChildItem -Path src -Recurse -Force | Where-Object { $_.PSIsContainer } | Select-Object -Property FullName | ForEach-Object { $_.FullName -replace [regex]::Escape\\(\"C:\\\\Users\\\\Administrator\\\\Desktop\\\\wedding-invites\\\\\"\\), \"\" })"
+      "PowerShell(cd \"C:\\\\Users\\\\Administrator\\\\Desktop\\\\wedding-invites\"; Get-ChildItem -Path src -Recurse -Force | Where-Object { $_.PSIsContainer } | Select-Object -Property FullName | ForEach-Object { $_.FullName -replace [regex]::Escape\\(\"C:\\\\Users\\\\Administrator\\\\Desktop\\\\wedding-invites\\\\\"\\), \"\" })",
+      "Bash(npx tsc *)",
+      "Bash(npx firebase-tools *)"
     ]
   }
 }

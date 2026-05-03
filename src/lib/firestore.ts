@@ -14,7 +14,7 @@ import {
   DocumentData,
 } from 'firebase/firestore'
 import { firebaseDb } from './firebase'
-import type { Template, WeddingEvent, Order, RSVP, AppUser } from '@/types'
+import type { Template, WeddingEvent, Order, RSVP, AppUser, Invitation } from '@/types'
 
 // Users
 export async function createUser(id: string, email: string, role: 'admin' | 'customer' = 'customer') {
@@ -160,4 +160,47 @@ export function generateSlug(brideName: string, groomName: string): string {
   const combined = `${brideName}-${groomName}`.toLowerCase().replace(/[^a-z0-9]/g, '-')
   const random = Math.random().toString(36).slice(2, 7)
   return `${combined}-${random}`
+}
+
+export function generateToken(): string {
+  return Math.random().toString(36).slice(2, 8) + Math.random().toString(36).slice(2, 8)
+}
+
+// Invitations
+export async function createInvitation(data: Omit<Invitation, 'id' | 'createdAt'>): Promise<string> {
+  const ref = await addDoc(collection(firebaseDb(), 'invitations'), {
+    ...data,
+    createdAt: Timestamp.now(),
+  })
+  return ref.id
+}
+
+export async function getEventInvitations(eventId: string): Promise<Invitation[]> {
+  const q = query(
+    collection(firebaseDb(), 'invitations'),
+    where('eventId', '==', eventId),
+    orderBy('createdAt', 'desc'),
+  )
+  const snap = await getDocs(q)
+  return snap.docs.map(d => ({
+    id: d.id,
+    ...d.data(),
+    createdAt: (d.data().createdAt as Timestamp).toDate(),
+  } as Invitation))
+}
+
+export async function getInvitationByToken(token: string): Promise<Invitation | null> {
+  const q = query(collection(firebaseDb(), 'invitations'), where('token', '==', token))
+  const snap = await getDocs(q)
+  if (snap.empty) return null
+  const d = snap.docs[0]
+  return {
+    id: d.id,
+    ...d.data(),
+    createdAt: (d.data().createdAt as Timestamp).toDate(),
+  } as Invitation
+}
+
+export async function updateInvitationStatus(id: string, status: 'pending' | 'accepted') {
+  await updateDoc(doc(firebaseDb(), 'invitations', id), { status })
 }

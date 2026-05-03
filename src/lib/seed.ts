@@ -8,6 +8,7 @@ export async function seedDefaultTemplates() {
 
   await createTemplate({
     name: 'Classic Envelope',
+    componentKey: 'phone-card',
     price: 0,
     isFree: true,
     previewImage: '',

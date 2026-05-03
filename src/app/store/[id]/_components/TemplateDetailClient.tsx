@@ -9,10 +9,12 @@ import Button from '@/components/ui/Button'
 import { generateSlug, createEvent, orderExistsForTemplate } from '@/lib/firestore'
 
 export default function TemplateDetailClient({ template }: { template: Template }) {
-  const { user } = useAuth()
+  const { user, appUser } = useAuth()
   const router = useRouter()
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+
+  const isAdmin = appUser?.role === 'admin'
 
   async function handlePurchase() {
     if (!user) {
@@ -24,8 +26,8 @@ export default function TemplateDetailClient({ template }: { template: Template 
     setError('')
 
     try {
-      if (template.price === 0 || template.isFree) {
-        // Free template — skip Stripe, create event directly
+      if (template.price === 0 || template.isFree || isAdmin) {
+        // Free template or admin bypass — skip Stripe, create event directly
         const alreadyOwns = await orderExistsForTemplate(user.uid, template.id)
         if (alreadyOwns) {
           router.push('/dashboard')
@@ -36,12 +38,15 @@ export default function TemplateDetailClient({ template }: { template: Template 
         await createEvent({
           userId: user.uid,
           templateId: template.id,
+          componentKey: template.componentKey || 'phone-card',
+          ownerEmail: user.email || '',
           slug,
           eventDate: '',
           data: {
             brideName: '',
             groomName: '',
             location: '',
+            fonts: { serif: 'Playfair Display', sans: 'Montserrat', script: 'Great Vibes' },
           },
         })
         router.push('/dashboard')
@@ -125,8 +130,18 @@ export default function TemplateDetailClient({ template }: { template: Template 
               </div>
             )}
 
+            {isAdmin && template.price > 0 && (
+              <div className="bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 mb-3 flex items-center gap-2">
+                <span className="text-amber-600 text-xs font-medium">Admin — payment bypassed</span>
+              </div>
+            )}
+
             <Button size="lg" loading={loading} onClick={handlePurchase} className="w-full">
-              {template.price === 0 ? 'Use This Template — Free' : `Purchase for $${template.price}`}
+              {isAdmin && template.price > 0
+                ? 'Add to Dashboard (Admin)'
+                : template.price === 0
+                ? 'Use This Template — Free'
+                : `Purchase for $${template.price}`}
             </Button>
 
             {!user && (

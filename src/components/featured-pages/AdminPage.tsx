@@ -69,7 +69,7 @@ function TemplatesTab() {
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
   const [editing, setEditing] = useState<Template | null>(null)
-  const [form, setForm] = useState({ name: '', price: 50, description: '', isFree: false })
+  const [form, setForm] = useState({ name: '', componentKey: 'phone-card', price: 50, description: '', isFree: false })
   const [previewFile, setPreviewFile] = useState<File | null>(null)
   const [saving, setSaving] = useState(false)
   const [uploading, setUploading] = useState(false)
@@ -86,14 +86,14 @@ function TemplatesTab() {
 
   function openNew() {
     setEditing(null)
-    setForm({ name: '', price: 50, description: '', isFree: false })
+    setForm({ name: '', componentKey: 'phone-card', price: 50, description: '', isFree: false })
     setPreviewFile(null)
     setShowForm(true)
   }
 
   function openEdit(t: Template) {
     setEditing(t)
-    setForm({ name: t.name, price: t.price, description: t.description || '', isFree: t.isFree || false })
+    setForm({ name: t.name, componentKey: t.componentKey || 'phone-card', price: t.price, description: t.description || '', isFree: t.isFree || false })
     setPreviewFile(null)
     setShowForm(true)
   }
@@ -113,6 +113,7 @@ function TemplatesTab() {
 
       const data = {
         name: form.name,
+        componentKey: form.componentKey,
         price: form.isFree ? 0 : form.price,
         description: form.description,
         isFree: form.isFree,
@@ -167,6 +168,17 @@ function TemplatesTab() {
               onChange={e => setForm({ ...form, name: e.target.value })}
               placeholder="e.g. Classic Envelope"
             />
+            <div className="flex flex-col gap-1">
+              <label className="text-sm font-medium text-stone-700">Component Key</label>
+              <select
+                value={form.componentKey}
+                onChange={e => setForm({ ...form, componentKey: e.target.value })}
+                className="w-full px-4 py-2.5 rounded-lg border border-stone-300 text-stone-800 focus:outline-none focus:ring-2 focus:ring-rose-400 text-sm"
+              >
+                <option value="phone-card">phone-card — Phone Card (envelope)</option>
+              </select>
+              <p className="text-xs text-stone-400">Maps this template to a React component in /src/templates/</p>
+            </div>
             <div className="flex items-center gap-3">
               <input
                 type="checkbox"

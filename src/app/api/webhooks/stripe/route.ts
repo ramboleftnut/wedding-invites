@@ -50,6 +50,11 @@ export async function POST(request: NextRequest) {
     if (!templateSnap.exists) {
       return NextResponse.json({ error: 'Template not found' }, { status: 404 })
     }
+    const componentKey = templateSnap.data()?.componentKey ?? 'phone-card'
+
+    // Look up owner email
+    const userSnap = await db.collection('users').doc(userId).get()
+    const ownerEmail = userSnap.data()?.email ?? ''
 
     // Create order
     await db.collection('orders').add({
@@ -65,12 +70,19 @@ export async function POST(request: NextRequest) {
     await db.collection('events').add({
       userId,
       templateId,
+      componentKey,
+      ownerEmail,
       slug,
       eventDate: '',
       data: {
         brideName: '',
         groomName: '',
         location: '',
+        fonts: {
+          serif: 'Playfair Display',
+          sans: 'Montserrat',
+          script: 'Great Vibes',
+        },
       },
       createdAt: FieldValue.serverTimestamp(),
     })

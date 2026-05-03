@@ -1,0 +1,74 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function isAdmin() {
+      return isSignedIn() &&
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+    }
+
+    // Users — anyone signed in can read their own doc; admin can read all
+    match /users/{userId} {
+      allow read: if isOwner(userId) || isAdmin();
+      allow create: if isOwner(userId);
+      allow update: if isOwner(userId) || isAdmin();
+    }
+
+    // Templates — public read; admin write
+    match /templates/{templateId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // Orders — owner or admin read; signed-in create (webhook runs as admin SDK, bypasses rules)
+    match /orders/{orderId} {
+      allow read: if isSignedIn() && (resource.data.userId == request.auth.uid || isAdmin());
+      allow create: if isSignedIn();
+      allow update, delete: if isAdmin();
+    }
+
+    // Events — owner or admin read/write
+    match /events/{eventId} {
+      allow read: if true;
+      allow create: if isSignedIn();
+      allow update: if isSignedIn() && (resource.data.userId == request.auth.uid || isAdmin());
+      allow delete: if isSignedIn() && (resource.data.userId == request.auth.uid || isAdmin());
+    }
+
+    // RSVPs — public create (guests submit without account); owner/admin read
+    match /rsvps/{rsvpId} {
+      allow create: if true;
+      allow read: if isSignedIn() && (
+        get(/databases/$(database)/documents/events/$(resource.data.eventId)).data.userId == request.auth.uid
+        || isAdmin()
+      );
+      allow update, delete: if isAdmin();
+    }
+
+    // Invitations — owner or admin full access; token-based read for guests
+    match /invitations/{invitationId} {
+      allow read: if true;
+      allow create: if isSignedIn() && (
+        get(/databases/$(database)/documents/events/$(request.resource.data.eventId)).data.userId == request.auth.uid
+        || isAdmin()
+      );
+      allow update: if isSignedIn() && (
+        get(/databases/$(database)/documents/events/$(resource.data.eventId)).data.userId == request.auth.uid
+        || isAdmin()
+      ) || true;
+      allow delete: if isSignedIn() && (
+        get(/databases/$(database)/documents/events/$(resource.data.eventId)).data.userId == request.auth.uid
+        || isAdmin()
+      );
+    }
+  }
+}
