@@ -1,31 +1,8 @@
 import { getEventBySlugAdmin, getUserEmailAdmin } from '@/lib/firestore-admin'
+import { deepSerialize } from '@/lib/serialize'
 import { notFound } from 'next/navigation'
 import type { Metadata } from 'next'
-import type { WeddingEvent } from '@/types'
 import EventPageClient from './_components/EventPageClient'
-
-// Date / Firestore Timestamp → ISO string so Next.js can serialize across the server→client boundary
-function toDateStr(v: unknown): string | undefined {
-  if (!v) return undefined
-  if (v instanceof Date) return v.toISOString()
-  if (typeof v === 'object' && 'toDate' in v && typeof (v as { toDate: unknown }).toDate === 'function') {
-    return (v as { toDate: () => Date }).toDate().toISOString()
-  }
-  return undefined
-}
-
-function serializeEvent(event: WeddingEvent): WeddingEvent {
-  return {
-    ...event,
-    createdAt: (toDateStr(event.createdAt) ?? event.createdAt) as unknown as Date,
-    members: Object.fromEntries(
-      Object.entries(event.members).map(([uid, m]) => {
-        const addedAt = toDateStr(m.addedAt)
-        return [uid, addedAt ? { ...m, addedAt: addedAt as unknown as Date } : m]
-      })
-    ),
-  }
-}
 
 export const dynamic = 'force-dynamic'
 
@@ -81,5 +58,5 @@ export default async function EventPage({ params }: Props) {
     ? new Date(event.eventDate + 'T23:59:59') < new Date()
     : false
 
-  return <EventPageClient event={serializeEvent(event)} ownerEmail={ownerEmail} isExpired={isExpired} />
+  return <EventPageClient event={deepSerialize(event)} ownerEmail={ownerEmail} isExpired={isExpired} />
 }

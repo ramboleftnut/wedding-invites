@@ -358,7 +358,9 @@ export async function deleteTable(id: string): Promise<void> {
 // Invitations
 export async function createInvitation(data: Omit<Invitation, 'id' | 'createdAt'>): Promise<string> {
   const doc: Record<string, unknown> = { ...data, createdAt: Timestamp.now() }
-  if (doc.guestEmail === undefined) delete doc.guestEmail
+  for (const key of Object.keys(doc)) {
+    if (doc[key] === undefined) delete doc[key]
+  }
   const ref = await addDoc(collection(firebaseDb(), 'invitations'), doc)
   return ref.id
 }

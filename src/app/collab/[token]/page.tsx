@@ -1,4 +1,5 @@
 import { getEventInviteByTokenAdmin, getEventByIdAdmin, getUserEmailAdmin } from '@/lib/firestore-admin'
+import { deepSerialize } from '@/lib/serialize'
 import { notFound } from 'next/navigation'
 import CollabAcceptClient from './_components/CollabAcceptClient'
 
@@ -24,5 +25,5 @@ export default async function CollabPage({ params }: Props) {
 
   if (!invite || !event) notFound()
 
-  return <CollabAcceptClient invite={invite} event={event} ownerEmail={ownerEmail} />
+  return <CollabAcceptClient invite={deepSerialize(invite)} event={deepSerialize(event)} ownerEmail={ownerEmail} />
 }

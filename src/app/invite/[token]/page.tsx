@@ -1,4 +1,5 @@
 import { getInvitationByTokenAdmin, getEventByIdAdmin, getUserEmailAdmin } from '@/lib/firestore-admin'
+import { deepSerialize } from '@/lib/serialize'
 import { notFound } from 'next/navigation'
 import type { Metadata } from 'next'
 import InvitePageClient from './_components/InvitePageClient'
@@ -39,7 +40,10 @@ export default async function InvitePage({ params }: Props) {
 
   if (!invitation || !event) notFound()
 
-  const ownerEmail = await getUserEmailAdmin(event.ownerId)
+  let ownerEmail = ''
+  try {
+    ownerEmail = await getUserEmailAdmin(event.ownerId)
+  } catch { /* non-critical */ }
 
   const isExpired = event.eventDate
     ? new Date(event.eventDate + 'T23:59:59') < new Date()
@@ -47,8 +51,8 @@ export default async function InvitePage({ params }: Props) {
 
   return (
     <InvitePageClient
-      invitation={invitation}
-      event={event}
+      invitation={deepSerialize(invitation)}
+      event={deepSerialize(event)}
       ownerEmail={ownerEmail}
       isExpired={isExpired}
     />
