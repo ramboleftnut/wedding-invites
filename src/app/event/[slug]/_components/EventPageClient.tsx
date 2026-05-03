@@ -14,16 +14,19 @@ interface Props {
 export default function EventPageClient({ event, ownerEmail, isExpired }: Props) {
   const Template = getTemplateComponent(event.componentKey)
 
-  async function handleRSVPSubmit(data: Omit<RSVP, 'id' | 'eventId' | 'createdAt'>) {
-    await createRSVP({ ...data, eventId: event.id })
-    try {
-      await sendRSVPNotification({
-        toEmail: ownerEmail,
-        eventName: `${event.data.brideName} & ${event.data.groomName}`,
-        guestName: data.name,
-        attending: data.attending,
-      })
-    } catch { /* best-effort */ }
+  async function handleRSVPSubmit(data: Omit<RSVP, 'id' | 'eventId' | 'createdAt'>[]) {
+    await Promise.all(data.map(d => createRSVP({ ...d, eventId: event.id })))
+    const attending = data.find(d => d.attending === 'yes')
+    if (attending) {
+      try {
+        await sendRSVPNotification({
+          toEmail: ownerEmail,
+          eventName: `${event.data.brideName} & ${event.data.groomName}`,
+          guestName: data.length > 1 ? data.filter(d => d.attending === 'yes').map(d => d.name).join(', ') : attending.name,
+          attending: 'yes',
+        })
+      } catch { /* best-effort */ }
+    }
   }
 
   return <Template event={event} onRSVPSubmit={handleRSVPSubmit} isExpired={isExpired} />

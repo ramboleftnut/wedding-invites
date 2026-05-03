@@ -3,9 +3,10 @@ import type { WeddingEvent, RSVP } from '@/types'
 
 export interface TemplateProps {
   event: WeddingEvent
-  onRSVPSubmit?: (data: Omit<RSVP, 'id' | 'eventId' | 'createdAt'>) => Promise<void>
+  onRSVPSubmit?: (data: Omit<RSVP, 'id' | 'eventId' | 'createdAt'>[]) => Promise<void>
   isExpired?: boolean
   guestName?: string
+  guestNames?: string[]
 }
 
 // Lazy imports keep the bundle small — only the used template is loaded

@@ -332,7 +332,7 @@ function EventsTab() {
                 <p className="text-sm text-stone-500 mt-0.5">
                   {ev.data.location || 'No location'} •{' '}
                   {ev.eventDate || 'No date'} •{' '}
-                  <span className="font-mono text-xs">{ev.userId.slice(0, 8)}</span>
+                  <span className="font-mono text-xs">{ev.ownerId.slice(0, 8)}</span>
                 </p>
               </div>
               <a

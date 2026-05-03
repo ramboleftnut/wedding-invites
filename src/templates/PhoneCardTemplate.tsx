@@ -6,17 +6,22 @@ import { fontsToGoogleUrl, defaultFonts } from '@/lib/fonts'
 
 interface Props {
   event: WeddingEvent
-  onRSVPSubmit?: (data: Omit<RSVP, 'id' | 'eventId' | 'createdAt'>) => Promise<void>
+  onRSVPSubmit?: (data: Omit<RSVP, 'id' | 'eventId' | 'createdAt'>[]) => Promise<void>
   isExpired?: boolean
   guestName?: string
+  guestNames?: string[]
 }
 
-export default function PhoneCardTemplate({ event, onRSVPSubmit, isExpired, guestName }: Props) {
+export default function PhoneCardTemplate({ event, onRSVPSubmit, isExpired, guestName, guestNames }: Props) {
+  const isGroup = guestNames && guestNames.length > 1
   const [phase, setPhase] = useState<'closed' | 'flipping' | 'open'>('closed')
   const [name, setName] = useState(guestName ?? '')
   const [email, setEmail] = useState('')
   const [submitted, setSubmitted] = useState(false)
   const [loading, setLoading] = useState(false)
+  const [checkedNames, setCheckedNames] = useState<Record<string, boolean>>(
+    () => Object.fromEntries((guestNames ?? []).map(n => [n, true]))
+  )
 
   const { brideName, groomName, location, eventName, fonts } = event.data
   const activeFont = {
@@ -56,7 +61,18 @@ export default function PhoneCardTemplate({ event, onRSVPSubmit, isExpired, gues
     if (!onRSVPSubmit) return
     setLoading(true)
     try {
-      await onRSVPSubmit({ name, email, attending: 'yes', message: '' })
+      let entries: Omit<RSVP, 'id' | 'eventId' | 'createdAt'>[]
+      if (isGroup) {
+        entries = (guestNames ?? []).map(n => ({
+          name: n,
+          email,
+          attending: checkedNames[n] ? 'yes' : 'no',
+          message: '',
+        }))
+      } else {
+        entries = [{ name, email, attending: 'yes', message: '' }]
+      }
+      await onRSVPSubmit(entries)
       setSubmitted(true)
     } finally {
       setLoading(false)
@@ -235,11 +251,30 @@ export default function PhoneCardTemplate({ event, onRSVPSubmit, isExpired, gues
                     <span style={{ ...sansStyle, fontSize: '11px', fontWeight: 700, letterSpacing: '0.18em', textTransform: 'uppercase', color: '#f43f5e' }}>RSVP</span>
                   </div>
                   <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                    <input
-                      required type="text" placeholder="Your full name"
-                      value={name} onChange={e => setName(e.target.value)}
-                      style={{ ...sansStyle, width: '100%', padding: '13px 16px', borderRadius: '11px', border: '1.5px solid #fecdd3', fontSize: '15px', color: '#1c1917', outline: 'none', boxSizing: 'border-box', background: '#fff' }}
-                    />
+                    {isGroup ? (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                        <div style={{ ...sansStyle, fontSize: '11px', fontWeight: 700, letterSpacing: '0.15em', textTransform: 'uppercase', color: '#f43f5e' }}>
+                          Who is attending?
+                        </div>
+                        {(guestNames ?? []).map(n => (
+                          <label key={n} style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '11px 14px', borderRadius: '11px', border: '1.5px solid #fecdd3', background: '#fff', cursor: 'pointer' }}>
+                            <input
+                              type="checkbox"
+                              checked={checkedNames[n] ?? true}
+                              onChange={e => setCheckedNames(prev => ({ ...prev, [n]: e.target.checked }))}
+                              style={{ accentColor: '#f43f5e', width: '16px', height: '16px', flexShrink: 0 }}
+                            />
+                            <span style={{ ...sansStyle, fontSize: '15px', color: '#1c1917' }}>{n}</span>
+                          </label>
+                        ))}
+                      </div>
+                    ) : (
+                      <input
+                        required type="text" placeholder="Your full name"
+                        value={name} onChange={e => setName(e.target.value)}
+                        style={{ ...sansStyle, width: '100%', padding: '13px 16px', borderRadius: '11px', border: '1.5px solid #fecdd3', fontSize: '15px', color: '#1c1917', outline: 'none', boxSizing: 'border-box', background: '#fff' }}
+                      />
+                    )}
                     <input
                       required type="email" placeholder="Your email address"
                       value={email} onChange={e => setEmail(e.target.value)}

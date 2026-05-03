@@ -39,7 +39,7 @@ export default async function InvitePage({ params }: Props) {
 
   if (!invitation || !event) notFound()
 
-  const ownerEmail = await getUserEmailAdmin(event.userId)
+  const ownerEmail = await getUserEmailAdmin(event.ownerId)
 
   const isExpired = event.eventDate
     ? new Date(event.eventDate + 'T23:59:59') < new Date()

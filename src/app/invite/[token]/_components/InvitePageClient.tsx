@@ -15,17 +15,23 @@ interface Props {
 export default function InvitePageClient({ invitation, event, ownerEmail, isExpired }: Props) {
   const Template = getTemplateComponent(event.componentKey)
 
-  async function handleRSVPSubmit(data: Omit<RSVP, 'id' | 'eventId' | 'createdAt'>) {
+  async function handleRSVPSubmit(data: Omit<RSVP, 'id' | 'eventId' | 'createdAt'>[]) {
+    const payloads = data.map(d => {
+      const p: Omit<RSVP, 'id' | 'createdAt'> = { ...d, eventId: event.id }
+      if (invitation.side) p.side = invitation.side
+      return p
+    })
     await Promise.all([
-      createRSVP({ ...data, eventId: event.id }),
+      ...payloads.map(p => createRSVP(p)),
       updateInvitationStatus(invitation.id, 'accepted'),
     ])
+    const names = data.filter(d => d.attending === 'yes').map(d => d.name)
     try {
       await sendRSVPNotification({
         toEmail: ownerEmail,
         eventName: `${event.data.brideName} & ${event.data.groomName}`,
-        guestName: data.name,
-        attending: data.attending,
+        guestName: names.length > 0 ? names.join(', ') : data[0]?.name ?? invitation.guestName,
+        attending: names.length > 0 ? 'yes' : 'no',
       })
     } catch { /* best-effort */ }
   }
@@ -36,6 +42,7 @@ export default function InvitePageClient({ invitation, event, ownerEmail, isExpi
       onRSVPSubmit={handleRSVPSubmit}
       isExpired={isExpired}
       guestName={invitation.guestName}
+      guestNames={invitation.guestNames}
     />
   )
 }

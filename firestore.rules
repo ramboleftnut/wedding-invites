@@ -7,48 +7,102 @@ service cloud.firestore {
       return request.auth != null;
     }
 
-    function isOwner(userId) {
+    function isOwnerUid(userId) {
       return isSignedIn() && request.auth.uid == userId;
     }
 
-    function isAdmin() {
+    function isSiteAdmin() {
       return isSignedIn() &&
         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
     }
 
-    // Users — caller can read their own doc; only admin can change role.
-    match /users/{userId} {
-      allow read:   if isOwner(userId) || isAdmin();
-      allow create: if isOwner(userId) && request.resource.data.role == 'customer';
-      allow update: if isAdmin()
-        || (isOwner(userId) && request.resource.data.role == resource.data.role);
-      allow delete: if isAdmin();
+    // ─── Event helpers ──────────────────────────────────────────────────────
+    function eventData(eventId) {
+      return get(/databases/$(database)/documents/events/$(eventId)).data;
     }
 
-    // Templates — public read; admin write only.
+    function isEventOwner(eventId) {
+      let e = eventData(eventId);
+      return isSignedIn() && (
+        e.get('ownerId', '') == request.auth.uid
+        || e.get('userId', '') == request.auth.uid
+      );
+    }
+
+    function isEventMember(eventId) {
+      let e = eventData(eventId);
+      return isSignedIn() && (
+        request.auth.uid in e.get('memberIds', [])
+        || e.get('ownerId', '') == request.auth.uid
+        || e.get('userId', '') == request.auth.uid
+      );
+    }
+
+    function eventMemberRole(eventId) {
+      let e = eventData(eventId);
+      return e.get('members', {}).get(request.auth.uid, {}).get('role', '');
+    }
+
+    function isEventAdmin(eventId) {
+      return isEventOwner(eventId) || eventMemberRole(eventId) == 'admin' || isSiteAdmin();
+    }
+
+    function memberSide(eventId) {
+      let e = eventData(eventId);
+      return e.get('members', {}).get(request.auth.uid, {}).get('side', '');
+    }
+
+    function canEditSide(eventId, side) {
+      return isEventAdmin(eventId)
+        || memberSide(eventId) == 'both'
+        || memberSide(eventId) == side;
+    }
+
+    // ─── Users ──────────────────────────────────────────────────────────────
+    match /users/{userId} {
+      allow read:   if isOwnerUid(userId) || isSiteAdmin();
+      allow create: if isOwnerUid(userId) && request.resource.data.role == 'customer';
+      allow update: if isSiteAdmin()
+        || (isOwnerUid(userId) && request.resource.data.role == resource.data.role);
+      allow delete: if isSiteAdmin();
+    }
+
+    // ─── Templates ──────────────────────────────────────────────────────────
     match /templates/{templateId} {
       allow read:  if true;
-      allow write: if isAdmin();
+      allow write: if isSiteAdmin();
     }
 
-    // Orders — clients NEVER write. Stripe webhook + free/admin flow use Admin SDK
-    // which bypasses these rules. Owner can read their own orders.
+    // ─── Orders ─────────────────────────────────────────────────────────────
     match /orders/{orderId} {
-      allow read:   if isSignedIn() && (resource.data.userId == request.auth.uid || isAdmin());
+      allow read:   if isSignedIn() && (resource.data.userId == request.auth.uid || isSiteAdmin());
       allow write:  if false;
     }
 
-    // Events — public read (the invitation pages render via SSR + public RSVP page).
-    // Only the owner (or admin) can mutate.
+    // ─── Events ─────────────────────────────────────────────────────────────
+    // Public read (the invitation page is shareable). Mutations restricted to
+    // the owner, event admins, or the site admin. Owner/admin can manage members.
     match /events/{eventId} {
       allow read:   if true;
-      allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
-      allow update: if isSignedIn() && (resource.data.userId == request.auth.uid || isAdmin());
-      allow delete: if isSignedIn() && (resource.data.userId == request.auth.uid || isAdmin());
+      allow create: if isSignedIn()
+        && request.resource.data.get('ownerId', '') == request.auth.uid
+        && (request.resource.data.get('userId', '') == request.auth.uid
+            || !('userId' in request.resource.data));
+      allow update: if isSignedIn() && (
+        resource.data.get('ownerId', '') == request.auth.uid
+        || resource.data.get('userId', '') == request.auth.uid
+        || resource.data.get('members', {}).get(request.auth.uid, {}).get('role', '') == 'admin'
+        || isSiteAdmin()
+      );
+      allow delete: if isSignedIn() && (
+        resource.data.get('ownerId', '') == request.auth.uid
+        || resource.data.get('userId', '') == request.auth.uid
+        || isSiteAdmin()
+      );
     }
 
-    // RSVPs — guests submit without an account, but must point at a real event.
-    // Read is restricted to the event owner / admin.
+    // ─── RSVPs ──────────────────────────────────────────────────────────────
+    // Guests submit anonymously. Reads/updates limited to event members.
     match /rsvps/{rsvpId} {
       allow create: if request.resource.data.eventId is string
         && request.resource.data.eventId.size() > 0
@@ -56,33 +110,19 @@ service cloud.firestore {
         && request.resource.data.name is string
         && request.resource.data.name.size() > 0
         && request.resource.data.attending in ['yes', 'no'];
-      allow read:   if isSignedIn() && (
-        get(/databases/$(database)/documents/events/$(resource.data.eventId)).data.userId == request.auth.uid
-        || isAdmin()
-      );
-      allow update, delete: if isAdmin();
+      allow read:   if isSignedIn() && isEventMember(resource.data.eventId);
+      allow update: if isSignedIn() && isEventMember(resource.data.eventId);
+      allow delete: if isSignedIn() && isEventAdmin(resource.data.eventId);
     }
 
-    // Invitations — guest reads happen server-side via Admin SDK (bypasses rules),
-    // so the client never needs read access to the collection.
-    // Owners create/delete; guests can only flip status from pending → accepted.
+    // ─── Guest invitations ──────────────────────────────────────────────────
     match /invitations/{invitationId} {
-      allow read: if isSignedIn() && (
-        get(/databases/$(database)/documents/events/$(resource.data.eventId)).data.userId == request.auth.uid
-        || isAdmin()
-      );
-      allow create: if isSignedIn() && (
-        get(/databases/$(database)/documents/events/$(request.resource.data.eventId)).data.userId == request.auth.uid
-        || isAdmin()
-      );
+      allow read:   if isSignedIn() && isEventMember(resource.data.eventId);
+      allow create: if isSignedIn() && isEventMember(request.resource.data.eventId);
       allow update: if (
-        // Owner / admin: full update
-        isSignedIn() && (
-          get(/databases/$(database)/documents/events/$(resource.data.eventId)).data.userId == request.auth.uid
-          || isAdmin()
-        )
+        isSignedIn() && isEventMember(resource.data.eventId)
       ) || (
-        // Guest: only flip pending → accepted, nothing else may change
+        // Guest may only flip pending → accepted, all other fields must match.
         resource.data.status == 'pending'
         && request.resource.data.status == 'accepted'
         && request.resource.data.eventId == resource.data.eventId
@@ -90,10 +130,29 @@ service cloud.firestore {
         && request.resource.data.guestName == resource.data.guestName
         && request.resource.data.createdAt == resource.data.createdAt
       );
-      allow delete: if isSignedIn() && (
-        get(/databases/$(database)/documents/events/$(resource.data.eventId)).data.userId == request.auth.uid
-        || isAdmin()
-      );
+      allow delete: if isSignedIn() && isEventAdmin(resource.data.eventId);
+    }
+
+    // ─── Collaborator invites ───────────────────────────────────────────────
+    // Acceptance happens server-side via Admin SDK in /api/collab/accept,
+    // so the client never writes to this collection during accept.
+    match /eventInvites/{inviteId} {
+      allow read:   if isSignedIn() && isEventAdmin(resource.data.eventId);
+      allow create: if isSignedIn() && isEventAdmin(request.resource.data.eventId);
+      allow update: if isSignedIn() && isEventAdmin(resource.data.eventId);
+      allow delete: if isSignedIn() && isEventAdmin(resource.data.eventId);
+    }
+
+    // ─── Tables ─────────────────────────────────────────────────────────────
+    // Members read all tables; only those who can edit the table's side may write it.
+    match /tables/{tableId} {
+      allow read:   if isSignedIn() && isEventMember(resource.data.eventId);
+      allow create: if isSignedIn()
+        && canEditSide(request.resource.data.eventId, request.resource.data.side);
+      allow update: if isSignedIn()
+        && canEditSide(resource.data.eventId, resource.data.side);
+      allow delete: if isSignedIn()
+        && canEditSide(resource.data.eventId, resource.data.side);
     }
   }
 }

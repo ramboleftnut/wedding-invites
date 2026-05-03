@@ -65,6 +65,11 @@ export async function POST(request: NextRequest) {
     const slug = generateSlug('bride', 'groom')
     await db.collection('events').add({
       userId,
+      ownerId: userId,
+      members: {
+        [userId]: { role: 'owner', side: 'both', canViewBothSides: true },
+      },
+      memberIds: [userId],
       templateId,
       componentKey,
       slug,

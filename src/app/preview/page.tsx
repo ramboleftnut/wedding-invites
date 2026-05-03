@@ -6,6 +6,11 @@ import type { WeddingEvent } from '@/types'
 const mockEvent: WeddingEvent = {
   id: 'preview',
   userId: 'preview',
+  ownerId: 'preview',
+  members: {
+    preview: { role: 'owner', side: 'both', canViewBothSides: true },
+  },
+  memberIds: ['preview'],
   templateId: 'preview',
   componentKey: 'phone-card',
   slug: 'preview',

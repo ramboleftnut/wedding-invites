@@ -5,15 +5,21 @@ import type { WeddingEvent, RSVP } from '@/types'
 
 interface EnvelopeTemplateProps {
   event: WeddingEvent
-  onRSVPSubmit?: (data: Omit<RSVP, 'id' | 'eventId' | 'createdAt'>) => Promise<void>
+  onRSVPSubmit?: (data: Omit<RSVP, 'id' | 'eventId' | 'createdAt'>[]) => Promise<void>
   isExpired?: boolean
+  guestName?: string
+  guestNames?: string[]
 }
 
-export default function EnvelopeTemplate({ event, onRSVPSubmit, isExpired }: EnvelopeTemplateProps) {
+export default function EnvelopeTemplate({ event, onRSVPSubmit, isExpired, guestName, guestNames }: EnvelopeTemplateProps) {
+  const isGroup = guestNames && guestNames.length > 1
   const [opened, setOpened] = useState(false)
   const [rsvpSubmitted, setRsvpSubmitted] = useState(false)
   const [rsvpLoading, setRsvpLoading] = useState(false)
-  const [rsvpForm, setRsvpForm] = useState({ name: '', email: '', attending: 'yes' as 'yes' | 'no', message: '' })
+  const [rsvpForm, setRsvpForm] = useState({ name: guestName ?? '', email: '', attending: 'yes' as 'yes' | 'no', message: '' })
+  const [checkedNames, setCheckedNames] = useState<Record<string, boolean>>(
+    () => Object.fromEntries((guestNames ?? []).map(n => [n, true]))
+  )
 
   const { brideName, groomName, location, message, coverImage } = event.data
 
@@ -31,7 +37,18 @@ export default function EnvelopeTemplate({ event, onRSVPSubmit, isExpired }: Env
     if (!onRSVPSubmit) return
     setRsvpLoading(true)
     try {
-      await onRSVPSubmit(rsvpForm)
+      let entries: Omit<RSVP, 'id' | 'eventId' | 'createdAt'>[]
+      if (isGroup) {
+        entries = (guestNames ?? []).map(name => ({
+          name,
+          email: rsvpForm.email,
+          attending: checkedNames[name] ? 'yes' : 'no',
+          message: rsvpForm.message,
+        }))
+      } else {
+        entries = [rsvpForm]
+      }
+      await onRSVPSubmit(entries)
       setRsvpSubmitted(true)
     } finally {
       setRsvpLoading(false)
@@ -155,13 +172,30 @@ export default function EnvelopeTemplate({ event, onRSVPSubmit, isExpired }: Env
                 <div className="bg-rose-50 rounded-xl p-5">
                   <h3 className="font-semibold text-stone-700 mb-4 text-center">RSVP</h3>
                   <form onSubmit={handleRSVP} className="space-y-3">
-                    <input
-                      required
-                      placeholder="Your full name"
-                      value={rsvpForm.name}
-                      onChange={e => setRsvpForm({ ...rsvpForm, name: e.target.value })}
-                      className="w-full px-4 py-2.5 rounded-lg border border-rose-200 bg-white text-stone-800 placeholder-stone-400 focus:outline-none focus:ring-2 focus:ring-rose-300 text-sm"
-                    />
+                    {isGroup ? (
+                      <div className="space-y-2">
+                        <p className="text-xs font-medium text-stone-500 uppercase tracking-wide">Who is attending?</p>
+                        {(guestNames ?? []).map(name => (
+                          <label key={name} className="flex items-center gap-3 p-2.5 rounded-lg bg-white border border-rose-100 cursor-pointer">
+                            <input
+                              type="checkbox"
+                              checked={checkedNames[name] ?? true}
+                              onChange={e => setCheckedNames(prev => ({ ...prev, [name]: e.target.checked }))}
+                              className="accent-rose-500 w-4 h-4 shrink-0"
+                            />
+                            <span className="text-sm text-stone-800">{name}</span>
+                          </label>
+                        ))}
+                      </div>
+                    ) : (
+                      <input
+                        required
+                        placeholder="Your full name"
+                        value={rsvpForm.name}
+                        onChange={e => setRsvpForm({ ...rsvpForm, name: e.target.value })}
+                        className="w-full px-4 py-2.5 rounded-lg border border-rose-200 bg-white text-stone-800 placeholder-stone-400 focus:outline-none focus:ring-2 focus:ring-rose-300 text-sm"
+                      />
+                    )}
                     <input
                       required
                       type="email"
@@ -170,22 +204,24 @@ export default function EnvelopeTemplate({ event, onRSVPSubmit, isExpired }: Env
                       onChange={e => setRsvpForm({ ...rsvpForm, email: e.target.value })}
                       className="w-full px-4 py-2.5 rounded-lg border border-rose-200 bg-white text-stone-800 placeholder-stone-400 focus:outline-none focus:ring-2 focus:ring-rose-300 text-sm"
                     />
-                    <div className="flex gap-3">
-                      {(['yes', 'no'] as const).map(val => (
-                        <button
-                          key={val}
-                          type="button"
-                          onClick={() => setRsvpForm({ ...rsvpForm, attending: val })}
-                          className={`flex-1 py-2 rounded-lg border text-sm font-medium transition-all ${
-                            rsvpForm.attending === val
-                              ? 'bg-rose-500 border-rose-500 text-white'
-                              : 'border-rose-200 text-stone-600 hover:border-rose-400'
-                          }`}
-                        >
-                          {val === 'yes' ? '✓ Attending' : '✗ Decline'}
-                        </button>
-                      ))}
-                    </div>
+                    {!isGroup && (
+                      <div className="flex gap-3">
+                        {(['yes', 'no'] as const).map(val => (
+                          <button
+                            key={val}
+                            type="button"
+                            onClick={() => setRsvpForm({ ...rsvpForm, attending: val })}
+                            className={`flex-1 py-2 rounded-lg border text-sm font-medium transition-all ${
+                              rsvpForm.attending === val
+                                ? 'bg-rose-500 border-rose-500 text-white'
+                                : 'border-rose-200 text-stone-600 hover:border-rose-400'
+                            }`}
+                          >
+                            {val === 'yes' ? '✓ Attending' : '✗ Decline'}
+                          </button>
+                        ))}
+                      </div>
+                    )}
                     <textarea
                       placeholder="Optional message..."
                       value={rsvpForm.message}

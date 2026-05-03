@@ -49,9 +49,24 @@ export interface EventData {
   fonts?: FontSelection
 }
 
+export type Side = 'bride' | 'groom' | 'both'
+export type EventRole = 'owner' | 'admin' | 'editor'
+
+export interface EventMember {
+  role: EventRole
+  side: Side
+  canViewBothSides: boolean
+  email?: string
+  addedAt?: Date
+}
+
 export interface WeddingEvent {
   id: string
+  /** @deprecated Use ownerId. Retained on the document for backward compatibility. */
   userId: string
+  ownerId: string
+  members: Record<string, EventMember>
+  memberIds: string[]
   templateId: string
   componentKey: string
   slug: string
@@ -67,6 +82,8 @@ export interface RSVP {
   email: string
   attending: 'yes' | 'no'
   message?: string
+  side?: Side
+  tableId?: string
   createdAt: Date
 }
 
@@ -75,7 +92,32 @@ export interface Invitation {
   eventId: string
   guestName: string
   guestEmail?: string
+  guestCount?: number
+  guestNames?: string[]
   token: string
   status: 'pending' | 'accepted'
+  side?: Side
+  createdAt: Date
+}
+
+export interface EventInvite {
+  id: string
+  eventId: string
+  email: string
+  role: EventRole
+  side: Side
+  canViewBothSides: boolean
+  token: string
+  status: 'pending' | 'accepted' | 'revoked'
+  invitedByUid: string
+  createdAt: Date
+}
+
+export interface Table {
+  id: string
+  eventId: string
+  number: number
+  seats: number
+  side: Side
   createdAt: Date
 }

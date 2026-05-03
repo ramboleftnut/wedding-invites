@@ -15,7 +15,8 @@
       "Bash(npx firebase-tools *)",
       "Bash(npm uninstall *)",
       "Bash(npm install *)",
-      "Bash(npm ls *)"
+      "Bash(npm ls *)",
+      "Bash(npm run *)"
     ]
   }
 }

@@ -37,6 +37,7 @@ export default function TemplateDetailClient({ template }: { template: Template 
         const slug = generateSlug('bride', 'groom')
         await createEvent({
           userId: user.uid,
+          ownerId: user.uid,
           templateId: template.id,
           componentKey: template.componentKey || 'phone-card',
           slug,
