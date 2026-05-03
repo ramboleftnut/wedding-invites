@@ -1,0 +1,16 @@
+{
+  "permissions": {
+    "allow": [
+      "PowerShell(Get-ChildItem \"C:\\\\Users\\\\Administrator\\\\Desktop\\\\wedding-invites\\\\node_modules\\\\next\" | ForEach-Object { $_.Name })",
+      "PowerShell(Get-ChildItem \"C:\\\\Users\\\\Administrator\\\\Desktop\\\\wedding-invites\\\\node_modules\\\\next\\\\dist\" | ForEach-Object { $_.Name })",
+      "PowerShell(Get-ChildItem \"C:\\\\Users\\\\Administrator\\\\Desktop\\\\wedding-invites\\\\node_modules\\\\next\\\\dist\\\\docs\" | ForEach-Object { $_.Name })",
+      "PowerShell(Get-ChildItem \"C:\\\\Users\\\\Administrator\\\\Desktop\\\\wedding-invites\\\\node_modules\\\\next\\\\dist\\\\docs\\\\01-app\" -Recurse | ForEach-Object { $_.Name } | Select-Object -First 40)",
+      "PowerShell(Get-ChildItem \"C:\\\\Users\\\\Administrator\\\\Desktop\\\\wedding-invites\\\\src\" -Recurse -File | Select-Object FullName | ForEach-Object { $_.FullName.Replace\\(\"C:\\\\Users\\\\Administrator\\\\Desktop\\\\wedding-invites\\\\\", \"\"\\) })",
+      "PowerShell([System.IO.File]::ReadAllText\\(\"C:\\\\Users\\\\Administrator\\\\Desktop\\\\wedding-invites\\\\.env.local.example\"\\))",
+      "PowerShell(Get-Item *)",
+      "Bash(Get-ChildItem -Force)",
+      "Bash(Select-Object Name, PSIsContainer)",
+      "PowerShell(cd \"C:\\\\Users\\\\Administrator\\\\Desktop\\\\wedding-invites\"; Get-ChildItem -Path src -Recurse -Force | Where-Object { $_.PSIsContainer } | Select-Object -Property FullName | ForEach-Object { $_.FullName -replace [regex]::Escape\\(\"C:\\\\Users\\\\Administrator\\\\Desktop\\\\wedding-invites\\\\\"\\), \"\" })"
+    ]
+  }
+}
