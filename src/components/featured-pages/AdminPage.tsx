@@ -306,7 +306,9 @@ function EventsTab() {
     getAllEvents().then(setEvents).catch(console.error).finally(() => setLoading(false))
   }, [])
 
-  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'
+  const baseUrl = typeof window !== 'undefined'
+    ? window.location.origin
+    : (process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000')
 
   if (loading) return <LoadingSpinner />
 

@@ -164,7 +164,9 @@ export default function DashboardPage() {
     setTimeout(() => setSuccessMsg(''), 3000)
   }
 
-  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'
+  const baseUrl = typeof window !== 'undefined'
+    ? window.location.origin
+    : (process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000')
 
   if (authLoading || loading) {
     return <div className="min-h-screen flex items-center justify-center"><LoadingSpinner size="lg" /></div>
