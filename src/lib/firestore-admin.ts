@@ -37,6 +37,11 @@ export async function getEventByIdAdmin(id: string): Promise<WeddingEvent | null
   } as WeddingEvent
 }
 
+export async function getUserEmailAdmin(userId: string): Promise<string> {
+  const snap = await adminDb().collection('users').doc(userId).get()
+  return (snap.data()?.email as string) || ''
+}
+
 export async function getInvitationByTokenAdmin(token: string): Promise<Invitation | null> {
   const snap = await adminDb().collection('invitations').where('token', '==', token).limit(1).get()
   if (snap.empty) return null

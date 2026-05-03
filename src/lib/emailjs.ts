@@ -15,7 +15,7 @@ export async function sendRSVPNotification({
   const templateId = process.env.NEXT_PUBLIC_EMAILJS_TEMPLATE_ID
   const publicKey = process.env.NEXT_PUBLIC_EMAILJS_PUBLIC_KEY
 
-  if (!serviceId || !templateId || !publicKey) return
+  if (!serviceId || !templateId || !publicKey || !toEmail) return
 
   await emailjs.send(
     serviceId,

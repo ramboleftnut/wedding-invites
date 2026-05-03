@@ -52,10 +52,6 @@ export async function POST(request: NextRequest) {
     }
     const componentKey = templateSnap.data()?.componentKey ?? 'phone-card'
 
-    // Look up owner email
-    const userSnap = await db.collection('users').doc(userId).get()
-    const ownerEmail = userSnap.data()?.email ?? ''
-
     // Create order
     await db.collection('orders').add({
       userId,
@@ -71,7 +67,6 @@ export async function POST(request: NextRequest) {
       userId,
       templateId,
       componentKey,
-      ownerEmail,
       slug,
       eventDate: '',
       data: {

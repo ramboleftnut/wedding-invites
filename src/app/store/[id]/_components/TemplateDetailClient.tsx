@@ -39,7 +39,6 @@ export default function TemplateDetailClient({ template }: { template: Template 
           userId: user.uid,
           templateId: template.id,
           componentKey: template.componentKey || 'phone-card',
-          ownerEmail: user.email || '',
           slug,
           eventDate: '',
           data: {
@@ -52,15 +51,17 @@ export default function TemplateDetailClient({ template }: { template: Template 
         router.push('/dashboard')
       } else {
         // Paid template — initiate Stripe checkout
+        const idToken = await user.getIdToken()
         const res = await fetch('/api/checkout', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${idToken}`,
+          },
           body: JSON.stringify({
             templateId: template.id,
             templateName: template.name,
             price: template.price,
-            userId: user.uid,
-            userEmail: user.email,
           }),
         })
 

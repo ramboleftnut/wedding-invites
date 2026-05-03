@@ -1,4 +1,4 @@
-import { getInvitationByTokenAdmin, getEventByIdAdmin } from '@/lib/firestore-admin'
+import { getInvitationByTokenAdmin, getEventByIdAdmin, getUserEmailAdmin } from '@/lib/firestore-admin'
 import { notFound } from 'next/navigation'
 import type { Metadata } from 'next'
 import InvitePageClient from './_components/InvitePageClient'
@@ -39,6 +39,8 @@ export default async function InvitePage({ params }: Props) {
 
   if (!invitation || !event) notFound()
 
+  const ownerEmail = await getUserEmailAdmin(event.userId)
+
   const isExpired = event.eventDate
     ? new Date(event.eventDate + 'T23:59:59') < new Date()
     : false
@@ -47,6 +49,7 @@ export default async function InvitePage({ params }: Props) {
     <InvitePageClient
       invitation={invitation}
       event={event}
+      ownerEmail={ownerEmail}
       isExpired={isExpired}
     />
   )

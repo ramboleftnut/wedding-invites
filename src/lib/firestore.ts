@@ -162,16 +162,18 @@ export function generateSlug(brideName: string, groomName: string): string {
   return `${combined}-${random}`
 }
 
-export function generateToken(): string {
-  return Math.random().toString(36).slice(2, 8) + Math.random().toString(36).slice(2, 8)
+export function generateToken(name?: string): string {
+  const rand = Math.random().toString(36).slice(2, 7)
+  if (!name) return rand
+  const slug = name.trim().toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')
+  return `${slug}-${rand}`
 }
 
 // Invitations
 export async function createInvitation(data: Omit<Invitation, 'id' | 'createdAt'>): Promise<string> {
-  const ref = await addDoc(collection(firebaseDb(), 'invitations'), {
-    ...data,
-    createdAt: Timestamp.now(),
-  })
+  const doc: Record<string, unknown> = { ...data, createdAt: Timestamp.now() }
+  if (doc.guestEmail === undefined) delete doc.guestEmail
+  const ref = await addDoc(collection(firebaseDb(), 'invitations'), doc)
   return ref.id
 }
 

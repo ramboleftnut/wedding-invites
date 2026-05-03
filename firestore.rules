@@ -16,55 +16,80 @@ service cloud.firestore {
         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
     }
 
-    // Users — anyone signed in can read their own doc; admin can read all
+    // Users — caller can read their own doc; only admin can change role.
     match /users/{userId} {
-      allow read: if isOwner(userId) || isAdmin();
-      allow create: if isOwner(userId);
-      allow update: if isOwner(userId) || isAdmin();
+      allow read:   if isOwner(userId) || isAdmin();
+      allow create: if isOwner(userId) && request.resource.data.role == 'customer';
+      allow update: if isAdmin()
+        || (isOwner(userId) && request.resource.data.role == resource.data.role);
+      allow delete: if isAdmin();
     }
 
-    // Templates — public read; admin write
+    // Templates — public read; admin write only.
     match /templates/{templateId} {
-      allow read: if true;
+      allow read:  if true;
       allow write: if isAdmin();
     }
 
-    // Orders — owner or admin read; signed-in create (webhook runs as admin SDK, bypasses rules)
+    // Orders — clients NEVER write. Stripe webhook + free/admin flow use Admin SDK
+    // which bypasses these rules. Owner can read their own orders.
     match /orders/{orderId} {
-      allow read: if isSignedIn() && (resource.data.userId == request.auth.uid || isAdmin());
-      allow create: if isSignedIn();
-      allow update, delete: if isAdmin();
+      allow read:   if isSignedIn() && (resource.data.userId == request.auth.uid || isAdmin());
+      allow write:  if false;
     }
 
-    // Events — owner or admin read/write
+    // Events — public read (the invitation pages render via SSR + public RSVP page).
+    // Only the owner (or admin) can mutate.
     match /events/{eventId} {
-      allow read: if true;
-      allow create: if isSignedIn();
+      allow read:   if true;
+      allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
       allow update: if isSignedIn() && (resource.data.userId == request.auth.uid || isAdmin());
       allow delete: if isSignedIn() && (resource.data.userId == request.auth.uid || isAdmin());
     }
 
-    // RSVPs — public create (guests submit without account); owner/admin read
+    // RSVPs — guests submit without an account, but must point at a real event.
+    // Read is restricted to the event owner / admin.
     match /rsvps/{rsvpId} {
-      allow create: if true;
-      allow read: if isSignedIn() && (
+      allow create: if request.resource.data.eventId is string
+        && request.resource.data.eventId.size() > 0
+        && exists(/databases/$(database)/documents/events/$(request.resource.data.eventId))
+        && request.resource.data.name is string
+        && request.resource.data.name.size() > 0
+        && request.resource.data.attending in ['yes', 'no'];
+      allow read:   if isSignedIn() && (
         get(/databases/$(database)/documents/events/$(resource.data.eventId)).data.userId == request.auth.uid
         || isAdmin()
       );
       allow update, delete: if isAdmin();
     }
 
-    // Invitations — owner or admin full access; token-based read for guests
+    // Invitations — guest reads happen server-side via Admin SDK (bypasses rules),
+    // so the client never needs read access to the collection.
+    // Owners create/delete; guests can only flip status from pending → accepted.
     match /invitations/{invitationId} {
-      allow read: if true;
+      allow read: if isSignedIn() && (
+        get(/databases/$(database)/documents/events/$(resource.data.eventId)).data.userId == request.auth.uid
+        || isAdmin()
+      );
       allow create: if isSignedIn() && (
         get(/databases/$(database)/documents/events/$(request.resource.data.eventId)).data.userId == request.auth.uid
         || isAdmin()
       );
-      allow update: if isSignedIn() && (
-        get(/databases/$(database)/documents/events/$(resource.data.eventId)).data.userId == request.auth.uid
-        || isAdmin()
-      ) || true;
+      allow update: if (
+        // Owner / admin: full update
+        isSignedIn() && (
+          get(/databases/$(database)/documents/events/$(resource.data.eventId)).data.userId == request.auth.uid
+          || isAdmin()
+        )
+      ) || (
+        // Guest: only flip pending → accepted, nothing else may change
+        resource.data.status == 'pending'
+        && request.resource.data.status == 'accepted'
+        && request.resource.data.eventId == resource.data.eventId
+        && request.resource.data.token == resource.data.token
+        && request.resource.data.guestName == resource.data.guestName
+        && request.resource.data.createdAt == resource.data.createdAt
+      );
       allow delete: if isSignedIn() && (
         get(/databases/$(database)/documents/events/$(resource.data.eventId)).data.userId == request.auth.uid
         || isAdmin()

@@ -7,17 +7,18 @@ import { getTemplateComponent } from '@/templates/registry'
 
 interface Props {
   event: WeddingEvent
+  ownerEmail: string
   isExpired: boolean
 }
 
-export default function EventPageClient({ event, isExpired }: Props) {
+export default function EventPageClient({ event, ownerEmail, isExpired }: Props) {
   const Template = getTemplateComponent(event.componentKey)
 
   async function handleRSVPSubmit(data: Omit<RSVP, 'id' | 'eventId' | 'createdAt'>) {
     await createRSVP({ ...data, eventId: event.id })
     try {
       await sendRSVPNotification({
-        toEmail: event.ownerEmail,
+        toEmail: ownerEmail,
         eventName: `${event.data.brideName} & ${event.data.groomName}`,
         guestName: data.name,
         attending: data.attending,

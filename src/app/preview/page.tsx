@@ -10,7 +10,6 @@ const mockEvent: WeddingEvent = {
   componentKey: 'phone-card',
   slug: 'preview',
   eventDate: '2025-09-14',
-  ownerEmail: '',
   createdAt: new Date(),
   data: {
     brideName: 'Sofia',

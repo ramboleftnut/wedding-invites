@@ -151,7 +151,7 @@ export default function DashboardPage() {
     if (!selectedEvent) return
     setAddingGuest(true)
     try {
-      const token = generateToken()
+      const token = generateToken(guestName)
       await createInvitation({ eventId: selectedEvent.id, guestName, guestEmail: guestEmail || undefined, token, status: 'pending' })
       setSelectedEventInvitations(await getEventInvitations(selectedEvent.id))
     } finally {

@@ -1,5 +1,6 @@
 import { initializeApp, getApps, cert, type App } from 'firebase-admin/app'
 import { getFirestore } from 'firebase-admin/firestore'
+import { getAuth } from 'firebase-admin/auth'
 
 let _adminApp: App | undefined
 
@@ -29,4 +30,8 @@ function getAdminApp(): App {
 
 export function adminDb() {
   return getFirestore(getAdminApp())
+}
+
+export function adminAuth() {
+  return getAuth(getAdminApp())
 }

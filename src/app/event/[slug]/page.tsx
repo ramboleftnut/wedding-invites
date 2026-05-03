@@ -1,4 +1,4 @@
-import { getEventBySlugAdmin } from '@/lib/firestore-admin'
+import { getEventBySlugAdmin, getUserEmailAdmin } from '@/lib/firestore-admin'
 import { notFound } from 'next/navigation'
 import type { Metadata } from 'next'
 import EventPageClient from './_components/EventPageClient'
@@ -48,9 +48,11 @@ export default async function EventPage({ params }: Props) {
 
   if (!event) notFound()
 
+  const ownerEmail = await getUserEmailAdmin(event.userId)
+
   const isExpired = event.eventDate
     ? new Date(event.eventDate + 'T23:59:59') < new Date()
     : false
 
-  return <EventPageClient event={event} isExpired={isExpired} />
+  return <EventPageClient event={event} ownerEmail={ownerEmail} isExpired={isExpired} />
 }

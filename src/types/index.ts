@@ -56,7 +56,6 @@ export interface WeddingEvent {
   componentKey: string
   slug: string
   eventDate: string
-  ownerEmail: string
   data: EventData
   createdAt: Date
 }
